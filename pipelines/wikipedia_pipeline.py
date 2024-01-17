@@ -1,4 +1,11 @@
 import json
+
+import pandas as pd
+from geopy import Nominatim
+
+NO_IMAGE = 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/No-image-available.png/480px-No-image-available.png'
+
+
 def get_wikipedia_page(url):
     import requests
 
@@ -61,4 +68,47 @@ def extract_wikipedia_data(**kwargs):
     kwargs["ti"].xcom_push(key="rows", value=json_rows)
     return "Ok"
 
+
+def get_location(country, city):
+    geolocatior = Nominatim(user_agent='geopyExercises')
+    location = geolocatior.geocode(f'{city}, {country}')
+    
+    if location:
+        return location.latitude, location.longitude
+    
+    return None
+
+def transform_wikipedia_data(**kwargs):
+ 
+    data = kwargs["ti"].xcom_pull(key='rows',task_ids="extract_data_from_wikipedia")
+    
+    data = json.loads(data)
+    
+    stadium_df = pd.DataFrame(data)
+    stadium_df['location'] = stadium_df.apply(lambda x: get_location(x['country'], x['stadium']), axis=1)    
+    stadium_df['images'] = stadium_df['images'].apply(lambda x: x if x not in ['NO_IMAGE', '', None] else NO_IMAGE)
+    stadium_df['capacity'] = stadium_df['capacity'].astype(int)
+    
+    #handle duplicated locations
+    duplicates = stadium_df[stadium_df.duplicated(['location'])]
+    duplicates['location'] = duplicates.apply(lambda x: get_location(x['country'], x['city']), axis=1)
+    stadium_df.update(duplicates)
+    
+    #push to xcom
+    kwargs["ti"].xcom_push(key="rows", value=stadium_df.to_json())
+    
+    return "Ok"
+
+def write_wikipedia_data(**kwargs):
+    from datetime import datetime
+    data = kwargs["ti"].xcom_pull(key='rows',task_ids="transform_wikipedia_data")
+    
+    data = json.loads(data)
+    data = pd.DataFrame(data)
+    
+    file_name=('stadium_cleaned_' + str(datetime.now().strftime('%Y-%m-%d_%H_%M')) + '.csv')
+    
+    data.to_csv('data/' + file_name, index=False)
+    
+    
     
