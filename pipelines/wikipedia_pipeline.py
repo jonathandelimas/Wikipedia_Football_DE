@@ -61,6 +61,4 @@ def extract_wikipedia_data(**kwargs):
     kwargs["ti"].xcom_push(key="rows", value=json_rows)
     return "Ok"
 
-
-def transform_wikipedia_data():
     
