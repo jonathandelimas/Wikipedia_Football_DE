@@ -101,6 +101,10 @@ def transform_wikipedia_data(**kwargs):
 
 def write_wikipedia_data(**kwargs):
     from datetime import datetime
+    import os
+    
+    azure_storage_key = os.getenv('AZURE_STORAGE_KEY')
+    
     data = kwargs["ti"].xcom_pull(key='rows',task_ids="transform_wikipedia_data")
     
     data = json.loads(data)
@@ -108,7 +112,12 @@ def write_wikipedia_data(**kwargs):
     
     file_name=('stadium_cleaned_' + str(datetime.now().strftime('%Y-%m-%d_%H_%M')) + '.csv')
     
-    data.to_csv('data/' + file_name, index=False)
+    # data.to_csv('data/' + file_name, index=False)
+    data.to_csv('abfs://wikipediafootballde@wikipediafootballde.dfs.core.windows.net/data/' + file_name,
+                storage_options={
+                    'account_key':azure_storage_key
+                }, index=False)
+    
     
     
     
