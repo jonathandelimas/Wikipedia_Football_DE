@@ -119,5 +119,3 @@ def write_wikipedia_data(**kwargs):
                 }, index=False)
     
     
-    
-    
